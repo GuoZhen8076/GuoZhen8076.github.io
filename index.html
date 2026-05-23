@@ -1,32 +1,1598 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Hello World</title>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      min-height: 100vh;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    }
-    h1 {
-      font-size: 4rem;
-      color: white;
-      text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
-      animation: fadeIn 1.5s ease-in;
-    }
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(-20px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>宠物养成</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg: #fdf6e3;
+  --card: #ffffff;
+  --primary: #f0a868;
+  --accent: #e07b5a;
+  --gold: #d4a017;
+  --text: #4a3728;
+  --sub: #8b7355;
+  --exp-bar: #7bc67e;
+  --hunger-bar: #f0a868;
+  --shadow: 0 4px 20px rgba(0,0,0,0.08);
+  --radius: 16px;
+}
+
+body {
+  font-family: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  background: linear-gradient(135deg, #fceabb 0%, #f8b500 50%, #fceabb 100%);
+  background-attachment: fixed;
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 16px;
+  color: var(--text);
+}
+
+/* ====== 通用 ====== */
+.screen { display: none; width: 100%; max-width: 960px; }
+.screen.active { display: block; }
+
+.card {
+  background: var(--card);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 24px;
+  margin-bottom: 16px;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 25px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+  user-select: none;
+}
+.btn:active { transform: scale(0.95); }
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-primary:hover { box-shadow: 0 4px 14px rgba(224,123,90,0.4); }
+.btn-outline { background: #fff; color: var(--accent); border: 2px solid var(--accent); }
+.btn-small { padding: 6px 14px; font-size: 13px; }
+.btn-danger { background: #e74c3c; color: #fff; font-size: 12px; padding: 4px 10px; }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+.progress-bar { width: 100%; height: 10px; background: #eee; border-radius: 5px; overflow: hidden; }
+.progress-fill { height: 100%; border-radius: 5px; transition: width 0.4s ease; }
+
+.input-field {
+  width: 100%;
+  padding: 12px 16px;
+  border: 2px solid #e8e0d5;
+  border-radius: 25px;
+  font-size: 16px;
+  text-align: center;
+  outline: none;
+  transition: border-color 0.2s;
+  background: #fdfaf5;
+  color: var(--text);
+}
+.input-field:focus { border-color: var(--primary); }
+.input-field::placeholder { color: #ccc; }
+
+/* ====== Splash ====== */
+#splash-screen {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+}
+#splash-screen .hello-text {
+  font-size: 4.5rem;
+  font-weight: 800;
+  background: linear-gradient(135deg, #e07b5a, #f0a868);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: splashIn 1s ease-out forwards;
+  text-align: center;
+}
+@keyframes splashIn {
+  from { opacity: 0; transform: scale(0.5); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes splashOut {
+  from { opacity: 1; transform: scale(1); }
+  to { opacity: 0; transform: scale(0.5); }
+}
+
+/* ====== 登录 ====== */
+.login-header { text-align: center; margin-bottom: 20px; }
+.login-header .login-icon { font-size: 60px; display: block; margin-bottom: 8px; }
+.login-header h2 { font-size: 20px; color: var(--text); }
+.login-header p { font-size: 12px; color: var(--sub); margin-top: 4px; }
+
+.login-form { display: flex; flex-direction: column; gap: 12px; }
+.login-error { color: #e74c3c; font-size: 13px; text-align: center; min-height: 20px; }
+
+/* ====== 宠物列表（概览卡片） ====== */
+.tab-bar {
+  display: flex;
+  gap: 0;
+  background: #fff;
+  border-radius: 25px;
+  padding: 4px;
+  margin-bottom: 16px;
+  box-shadow: var(--shadow);
+}
+.tab-btn {
+  flex: 1;
+  padding: 10px 0;
+  border: none;
+  border-radius: 25px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  background: transparent;
+  color: var(--sub);
+  transition: background 0.2s, color 0.2s;
+}
+.tab-btn.active { background: var(--accent); color: #fff; }
+
+.overview-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+.overview-card {
+  background: #fff;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 14px 10px;
+  text-align: center;
+  cursor: pointer;
+  transition: transform 0.15s;
+  border: 2px solid transparent;
+}
+.overview-card:hover { transform: translateY(-2px); border-color: var(--primary); }
+.overview-card .ov-emoji { font-size: 44px; display: block; margin-bottom: 4px; }
+.overview-card .ov-name { font-weight: 700; font-size: 14px; }
+.overview-card .ov-level { font-size: 12px; color: var(--accent); font-weight: 600; }
+.overview-card .ov-points { font-size: 12px; color: var(--gold); font-weight: 600; margin-top: 2px; }
+.overview-card .ov-hunger { font-size: 11px; color: var(--sub); }
+.overview-card .ov-bar { margin-top: 4px; height: 4px; }
+
+/* 奖励标签 */
+.reward-section { margin-bottom: 16px; }
+.reward-section h4 { font-size: 14px; margin-bottom: 8px; color: var(--text); }
+.reward-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.reward-form select, .reward-form input {
+  padding: 8px 12px;
+  border: 2px solid #e8e0d5;
+  border-radius: 20px;
+  font-size: 14px;
+  background: #fdfaf5;
+  color: var(--text);
+  outline: none;
+}
+.reward-form select:focus, .reward-form input:focus { border-color: var(--primary); }
+.reward-form .amount-btns { display: flex; gap: 6px; }
+.reward-form .amount-btn {
+  padding: 6px 12px;
+  border: 2px solid #e8e0d5;
+  border-radius: 16px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  background: #fff;
+  color: var(--text);
+  transition: border-color 0.2s;
+}
+.reward-form .amount-btn.selected { border-color: var(--accent); background: #fff5f0; color: var(--accent); }
+
+.log-list { max-height: 360px; overflow-y: auto; }
+.log-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-bottom: 1px solid #f5f0e8;
+  font-size: 13px;
+}
+.log-item .log-emoji { font-size: 20px; flex-shrink: 0; }
+.log-item .log-info { flex: 1; min-width: 0; }
+.log-item .log-reason { font-weight: 500; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.log-item .log-time { font-size: 11px; color: #bbb; }
+.log-item .log-amount { font-weight: 700; flex-shrink: 0; }
+.log-item .log-amount.positive { color: #e74c3c; }
+.log-item .log-amount.negative { color: #4caf50; }
+
+.log-filter { margin-bottom: 8px; }
+.log-filter select { font-size: 13px; padding: 4px 10px; border-radius: 14px; border: 1px solid #ddd; }
+
+/* 抽奖转盘 */
+.wheel-container {
+  position: relative;
+  display: inline-block;
+}
+.wheel-pointer {
+  position: absolute;
+  top: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 28px;
+  color: #e74c3c;
+  z-index: 10;
+  filter: drop-shadow(0 2px 3px rgba(0,0,0,0.3));
+}
+#wheel-canvas {
+  border-radius: 50%;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+}
+
+/* 排行 */
+.rank-list { margin-top: 8px; }
+.rank-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-bottom: 1px solid #f5f0e8;
+  font-size: 13px;
+}
+.rank-item:last-child { border-bottom: none; }
+.rank-badge {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 13px;
+  flex-shrink: 0;
+  color: #fff;
+}
+.rank-badge.gold { background: linear-gradient(135deg, #f9ca24, #f0932b); }
+.rank-badge.silver { background: linear-gradient(135deg, #bdc3c7, #95a5a6); }
+.rank-badge.bronze { background: linear-gradient(135deg, #e1b12c, #c23616); }
+.rank-badge.normal { background: #cdd1d4; color: #666; }
+.rank-emoji { font-size: 24px; flex-shrink: 0; }
+.rank-info { flex: 1; min-width: 0; }
+.rank-name { font-weight: 600; }
+.rank-detail { font-size: 11px; color: var(--sub); }
+.rank-value { font-weight: 700; flex-shrink: 0; color: var(--accent); }
+
+/* ====== 领养 ====== */
+.pet-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 12px; }
+.pet-option {
+  background: #fff;
+  border: 2px solid #eee;
+  border-radius: var(--radius);
+  padding: 16px 8px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.2s, transform 0.2s;
+}
+.pet-option:hover { border-color: var(--primary); transform: translateY(-2px); }
+.pet-option .pet-emoji { font-size: 48px; display: block; margin-bottom: 6px; }
+.pet-option .pet-name { font-weight: 700; font-size: 16px; }
+.pet-option .pet-desc { font-size: 12px; color: var(--sub); margin-top: 2px; }
+
+/* ====== 主游戏 ====== */
+.game-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.game-header .back-btn { font-size: 13px; color: var(--accent); cursor: pointer; font-weight: 600; }
+
+.pet-display { text-align: center; padding: 12px 0 6px; }
+.pet-avatar {
+  font-size: 100px;
+  display: block;
+  animation: petBounce 2s ease-in-out infinite;
+  filter: drop-shadow(0 8px 12px rgba(0,0,0,0.15));
+}
+@keyframes petBounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-12px); }
+}
+.pet-display .pet-name-display { font-size: 22px; font-weight: 700; margin-top: 8px; }
+.pet-display .pet-name-display .edit-icon {
+  font-size: 14px; cursor: pointer; margin-left: 4px; opacity: 0.5; transition: opacity 0.2s;
+}
+.pet-display .pet-name-display .edit-icon:hover { opacity: 1; }
+.pet-display .pet-level { font-size: 13px; color: var(--accent); font-weight: 600; margin-top: 2px; }
+
+.stats { margin-top: 8px; }
+.stat-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-size: 13px; }
+.stat-row .stat-label { width: 50px; flex-shrink: 0; font-weight: 600; color: var(--sub); }
+.stat-row .stat-val { width: 55px; flex-shrink: 0; text-align: right; font-size: 12px; color: var(--sub); }
+.stat-row .progress-bar { flex: 1; }
+.stat-row .exp-fill { background: var(--exp-bar); }
+.stat-row .hunger-fill { background: var(--hunger-bar); }
+
+.points-display {
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  font-size: 18px; font-weight: 700; color: var(--gold); margin: 8px 0;
+}
+
+.feed-section { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; margin-top: 10px; }
+.food-btn {
+  display: flex; flex-direction: column; align-items: center;
+  padding: 10px 14px; border: 2px solid #eee;
+  border-radius: var(--radius); background: #fff; cursor: pointer;
+  transition: border-color 0.2s, transform 0.2s; min-width: 78px;
+}
+.food-btn:hover { border-color: var(--primary); transform: translateY(-2px); }
+.food-btn.selected { border-color: var(--accent); background: #fff5f0; }
+.food-btn .food-emoji { font-size: 28px; }
+.food-btn .food-name { font-size: 12px; font-weight: 600; margin-top: 2px; }
+.food-btn .food-cost { font-size: 11px; color: var(--gold); font-weight: 600; }
+.food-btn .food-count { font-size: 10px; color: var(--sub); }
+
+.feed-action { margin-top: 14px; text-align: center; }
+
+/* Toast */
+.toast {
+  position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+  background: #4a3728; color: #fff; padding: 10px 24px; border-radius: 25px;
+  font-size: 14px; font-weight: 600; z-index: 100;
+  animation: toastIn 0.3s ease-out; pointer-events: none;
+}
+@keyframes toastIn {
+  from { opacity: 0; transform: translateX(-50%) translateY(-10px); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+.toast.out { animation: toastOut 0.3s ease-out forwards; }
+@keyframes toastOut {
+  from { opacity: 1; transform: translateX(-50%) translateY(0); }
+  to { opacity: 0; transform: translateX(-50%) translateY(-10px); }
+}
+
+/* 弹窗 */
+.modal-overlay {
+  display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.5); z-index: 50;
+  justify-content: center; align-items: center;
+}
+.modal-overlay.active { display: flex; }
+.modal {
+  background: #fff; border-radius: var(--radius); padding: 24px;
+  width: 90%; max-width: 380px; max-height: 80vh; overflow-y: auto;
+}
+.modal h3 { text-align: center; margin-bottom: 16px; font-size: 18px; }
+.shop-item {
+  display: flex; align-items: center; gap: 12px; padding: 12px;
+  border: 1px solid #eee; border-radius: 12px; margin-bottom: 8px;
+}
+.shop-item .shop-emoji { font-size: 32px; flex-shrink: 0; }
+.shop-item .shop-info { flex: 1; }
+.shop-item .shop-name { font-weight: 700; font-size: 14px; }
+.shop-item .shop-desc { font-size: 12px; color: var(--sub); }
+.shop-item .shop-cost { font-size: 13px; font-weight: 600; color: var(--gold); }
+.modal-close { display: block; margin: 16px auto 0; }
+
+.bottom-nav { display: flex; gap: 8px; justify-content: center; margin-top: 8px; }
+
+/* ====== 移动端适配 ====== */
+@media (max-width: 600px) {
+  body { padding: 8px; align-items: flex-start; padding-top: 12px; }
+  .screen { max-width: 100%; }
+  .card { padding: 16px; margin-bottom: 10px; border-radius: 12px; }
+
+  /* 标签栏 */
+  .tab-btn { font-size: 12px; padding: 8px 2px; }
+  .tab-bar { border-radius: 20px; padding: 3px; }
+
+  /* Splash */
+  #splash-screen .hello-text { font-size: 3rem; }
+
+  /* 概览 */
+  .overview-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .overview-card { padding: 10px 6px; }
+  .overview-card .ov-emoji { font-size: 32px; }
+
+  /* 领养 */
+  .pet-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .pet-option { padding: 10px 4px; }
+  .pet-option .pet-emoji { font-size: 36px; }
+
+  /* 游戏 */
+  .pet-avatar { font-size: 72px; }
+  .food-btn { min-width: 60px; padding: 8px 6px; }
+  .food-btn .food-emoji { font-size: 22px; }
+  .food-btn .food-name { font-size: 11px; }
+  .food-btn .food-cost { font-size: 10px; }
+  .feed-section { gap: 6px; }
+
+  /* 奖励表单 */
+  .reward-form { flex-direction: column; }
+  .reward-form select, .reward-form input { width: 100%; }
+  .amount-btns { flex-wrap: wrap; justify-content: center; }
+
+  /* 转盘 */
+  #wheel-canvas { width: 240px; height: 240px; }
+  .wheel-pointer { font-size: 22px; top: -6px; }
+
+  /* 排行 */
+  .rank-item { padding: 8px 10px; font-size: 12px; }
+  .rank-emoji { font-size: 20px; }
+  .rank-badge { width: 22px; height: 22px; font-size: 11px; }
+
+  /* 弹窗 */
+  .modal { width: 95%; padding: 16px; }
+}
+
+@media (max-width: 380px) {
+  .tab-btn { font-size: 11px; padding: 6px 0; }
+  .overview-grid { grid-template-columns: repeat(2, 1fr); gap: 6px; }
+  .pet-grid { grid-template-columns: repeat(2, 1fr); gap: 6px; }
+  #wheel-canvas { width: 200px; height: 200px; }
+  .btn { font-size: 13px; padding: 8px 16px; }
+  .food-btn { min-width: 52px; padding: 6px 4px; }
+  .food-btn .food-emoji { font-size: 18px; }
+  .food-btn .food-name { font-size: 10px; }
+}
+</style>
 </head>
 <body>
-  <h1>Hello World!</h1>
+
+<!-- Splash -->
+<div id="splash-screen" class="screen active">
+  <div class="hello-text">Hello</div>
+</div>
+
+<!-- 登录页面 -->
+<div id="login-screen" class="screen">
+  <div class="card">
+    <div class="login-header">
+      <span class="login-icon">🐾</span>
+      <h2>宠物养成</h2>
+      <p>登录以继续照顾你的宠物</p>
+    </div>
+    <div class="login-form">
+      <input type="tel" class="input-field" id="login-phone" placeholder="请输入手机号" maxlength="11" autocomplete="tel">
+      <input type="password" class="input-field" id="login-password" placeholder="请输入密码" maxlength="16" autocomplete="current-password">
+      <div class="login-error" id="login-error"></div>
+      <button class="btn btn-primary" id="login-btn" style="width:100%; font-size:16px; padding:12px;">登录</button>
+    </div>
+  </div>
+</div>
+
+<!-- 主界面（标签页） -->
+<div id="main-screen" class="screen">
+  <div class="user-bar">
+    <span id="user-phone-display"></span>
+    <span class="logout-link" id="logout-btn">退出登录</span>
+  </div>
+  <div class="tab-bar">
+    <button class="tab-btn active" id="tab-overview">🏠 概览</button>
+    <button class="tab-btn" id="tab-rewards">🎁 奖励/惩罚</button>
+    <button class="tab-btn" id="tab-lottery">🎰 抽奖</button>
+    <button class="tab-btn" id="tab-ranking">🏆 排行</button>
+  </div>
+  <!-- 概览标签 -->
+  <div id="overview-tab">
+    <div class="overview-grid" id="overview-container"></div>
+    <button class="btn btn-outline" id="to-adopt-btn" style="width:100%; margin-top:12px;">➕ 领养新宠物</button>
+  </div>
+  <!-- 奖励标签 -->
+  <div id="rewards-tab" style="display:none;">
+    <div class="card reward-section">
+      <h4>积分管理</h4>
+      <div style="display:flex; gap:8px; margin-bottom:10px;">
+        <button class="btn btn-small btn-primary" id="reward-mode-add" style="flex:1;">增加</button>
+        <button class="btn btn-small btn-outline" id="reward-mode-deduct" style="flex:1;">扣除</button>
+      </div>
+      <div class="reward-form">
+        <select id="reward-pet-select"></select>
+        <div class="amount-btns" id="amount-btns">
+          <button class="amount-btn selected" data-amount="10">10</button>
+          <button class="amount-btn" data-amount="20">20</button>
+          <button class="amount-btn" data-amount="30">30</button>
+          <button class="amount-btn" data-amount="40">40</button>
+          <button class="amount-btn" data-amount="50">50</button>
+        </div>
+        <input type="text" id="reward-reason" placeholder="理由（选填）" style="flex:1; min-width:120px;">
+        <button class="btn btn-primary btn-small" id="reward-submit">确认</button>
+      </div>
+    </div>
+    <div class="card">
+      <h4 style="margin-bottom:8px;">积分明细</h4>
+      <div class="log-filter">
+        <select id="log-filter-pet">
+          <option value="all">全部宠物</option>
+        </select>
+      </div>
+      <div class="log-list" id="log-list"></div>
+    </div>
+  </div>
+  <!-- 抽奖标签 -->
+  <div id="lottery-tab" style="display:none;">
+    <div class="card" style="text-align:center;">
+      <h4 style="margin-bottom:4px;">🎰 每日积分抽奖</h4>
+      <p style="font-size:12px; color:var(--sub); margin-bottom:8px;">
+        消耗 <b>10</b> 积分 · 每日限抽 <b>1</b> 次 · 次日0点刷新
+      </p>
+      <select id="lottery-pet-select" style="margin-bottom:8px; padding:6px 12px; border-radius:16px; border:1px solid #ddd; font-size:13px;"></select>
+      <div class="wheel-container">
+        <div class="wheel-pointer">▼</div>
+        <canvas id="wheel-canvas" width="300" height="300"></canvas>
+      </div>
+      <div style="margin-top:8px; font-size:13px; color:var(--sub);" id="lottery-result"></div>
+      <button class="btn btn-primary" id="spin-btn" style="margin-top:12px; font-size:16px; padding:12px 36px;">
+        🎯 抽奖 (10积分)
+      </button>
+    </div>
+  </div>
+  <!-- 排行标签 -->
+  <div id="ranking-tab" style="display:none;">
+    <div class="card">
+      <h4 style="text-align:center; margin-bottom:4px;">🏆 宠物等级排行</h4>
+      <div class="rank-list" id="level-rank-list"></div>
+    </div>
+    <div class="card">
+      <h4 style="text-align:center; margin-bottom:4px;">💰 积分排行</h4>
+      <div class="rank-list" id="points-rank-list"></div>
+    </div>
+    <div class="card">
+      <h4 style="text-align:center; margin-bottom:4px;">📊 今日积分变动排行</h4>
+      <div class="rank-list" id="today-rank-list"></div>
+    </div>
+  </div>
+</div>
+
+<!-- 领养页面 -->
+<div id="adopt-screen" class="screen">
+  <div class="card">
+    <h2 style="text-align:center; margin-bottom:4px;">选择你的伙伴</h2>
+    <p style="text-align:center; color:var(--sub); font-size:13px;">领养一只属于你的宠物吧</p>
+    <div class="pet-grid" id="pet-adopt-grid"></div>
+    <button class="btn btn-outline" id="adopt-back-btn" style="width:100%; margin-top:12px;">← 返回概览</button>
+  </div>
+</div>
+
+<!-- 主游戏界面 -->
+<div id="game-screen" class="screen">
+  <div class="game-header">
+    <span class="back-btn" id="game-back-btn">← 返回概览</span>
+  </div>
+  <div class="card">
+    <div class="pet-display">
+      <span class="pet-avatar" id="pet-avatar">🐱</span>
+      <div class="pet-name-display">
+        <span id="pet-name-text"></span>
+        <span class="edit-icon" id="edit-name-btn" title="改名">✎</span>
+      </div>
+      <div class="pet-level" id="pet-level-text">Lv.1</div>
+    </div>
+    <div class="stats">
+      <div class="stat-row">
+        <span class="stat-label">经验</span>
+        <div class="progress-bar"><div class="progress-fill exp-fill" id="exp-bar"></div></div>
+        <span class="stat-val" id="exp-text">0/100</span>
+      </div>
+    </div>
+    <div class="points-display"><span>🪙</span> <span id="points-text">0</span></div>
+    <div class="feed-section" id="feed-options"></div>
+    <div class="feed-action">
+      <button class="btn btn-primary" id="feed-btn" style="font-size:16px; padding:12px 36px;">🍽️ 喂食</button>
+    </div>
+  </div>
+  <div class="bottom-nav">
+    <button class="btn btn-outline" id="game-delete-btn" style="color:#e74c3c; border-color:#e74c3c;">🗑️ 放生</button>
+  </div>
+</div>
+
+<!-- 领养命名弹窗 -->
+<div class="modal-overlay" id="adopt-name-modal">
+  <div class="modal">
+    <h3 id="adopt-name-title">🐱 给你的宠物起个名字</h3>
+    <input type="text" class="input-field" id="adopt-name-input" maxlength="8" placeholder="输入名字..." style="margin-top:12px;">
+    <div style="display:flex; gap:8px; margin-top:16px; justify-content:center;">
+      <button class="btn btn-outline" id="adopt-name-cancel">取消</button>
+      <button class="btn btn-primary" id="adopt-name-confirm">领养</button>
+    </div>
+  </div>
+</div>
+
+<!-- 改名弹窗 -->
+<div class="modal-overlay" id="rename-modal">
+  <div class="modal">
+    <h3>✎ 给宠物改名</h3>
+    <input type="text" class="input-field" id="rename-input" maxlength="8" placeholder="输入新名字..." style="margin-top:12px;">
+    <div style="display:flex; gap:8px; margin-top:16px; justify-content:center;">
+      <button class="btn btn-outline" id="rename-cancel">取消</button>
+      <button class="btn btn-primary" id="rename-confirm">确认</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ====== 数据定义 ======
+const PET_DATA = {
+  cat:    { emoji: '🐱', name: '小猫咪', desc: '优雅 · 好养' },
+  dog:    { emoji: '🐶', name: '小狗狗', desc: '忠诚 · 活泼' },
+  bunny:  { emoji: '🐰', name: '小兔子', desc: '可爱 · 温顺' },
+  hamster:{ emoji: '🐹', name: '小仓鼠', desc: '呆萌 · 省心' },
+  panda:  { emoji: '🐼', name: '小熊猫', desc: '憨厚 · 贪吃' },
+  fox:    { emoji: '🦊', name: '小狐狸', desc: '聪明 · 敏捷' },
+  penguin:{ emoji: '🐧', name: '小企鹅', desc: '呆萌 · 耐寒' },
+  koala:  { emoji: '🐨', name: '小考拉', desc: '慵懒 · 爱睡' },
+  unicorn:{ emoji: '🦄', name: '独角兽', desc: '梦幻 · 稀有' },
+  dragon: { emoji: '🐲', name: '小龙', desc: '威猛 · 传说' },
+  frog:   { emoji: '🐸', name: '小青蛙', desc: '活泼 · 爱跳' },
+  chick:  { emoji: '🐤', name: '小鸡仔', desc: '软萌 · 好养' },
+};
+
+const FOODS = [
+  { id: 'drumstick', emoji: '🍗', name: '鸡腿',   exp: 20, hunger: 18, cost: 30,  desc: '实惠好吃' },
+  { id: 'meat',      emoji: '🍖', name: '肉干',   exp: 30, hunger: 25, cost: 50,  desc: '美味营养' },
+  { id: 'cheese',    emoji: '🧀', name: '奶酪',   exp: 40, hunger: 30, cost: 80,  desc: '浓郁香醇' },
+  { id: 'cake',      emoji: '🍰', name: '蛋糕',   exp: 60, hunger: 40, cost: 120, desc: '经验多多' },
+  { id: 'donut',     emoji: '🍩', name: '甜甜圈', exp: 90, hunger: 55, cost: 180, desc: '甜蜜能量' },
+  { id: 'feast',     emoji: '🌟', name: '至尊大餐', exp: 150, hunger: 80, cost: 300, desc: '顶级享受' },
+  { id: 'rainbow',   emoji: '🌈', name: '彩虹料理', exp: 250, hunger: 100, cost: 500, desc: '传说级美味' },
+];
+
+// ====== 账号系统 ======
+const ACCOUNTS_KEY = 'pet_accounts';
+
+function loadAccounts() {
+  try {
+    const raw = localStorage.getItem(ACCOUNTS_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch(e) { return {}; }
+}
+
+function saveAccounts(accounts) {
+  try {
+    localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(accounts));
+  } catch(e) { /* ignore */ }
+}
+
+// ====== 积分日志 ======
+function addPointsLog(pet, amount, reason) {
+  if (!pet.pointsLog) pet.pointsLog = [];
+  pet.pointsLog.push({
+    time: new Date().toLocaleString('zh-CN', { hour12: false }),
+    amount: amount,
+    reason: reason,
+  });
+}
+
+// 获取所有宠物的积分日志（供奖励页面使用）
+function getAllPointsLogs() {
+  const pets = getAccountPets();
+  const logs = [];
+  pets.forEach(p => {
+    if (p.pointsLog) {
+      p.pointsLog.forEach(l => {
+        logs.push({
+          ...l,
+          petName: p.name,
+          petEmoji: (PET_DATA[p.type] || PET_DATA['cat']).emoji,
+          petId: p.id,
+        });
+      });
+    }
+  });
+  logs.sort((a, b) => new Date(b.time) - new Date(a.time));
+  return logs;
+}
+
+// 当前会话
+function getSessionPhone() {
+  return sessionStorage.getItem('pet_phone') || null;
+}
+function setSessionPhone(phone) {
+  sessionStorage.setItem('pet_phone', phone);
+}
+function clearSession() {
+  sessionStorage.removeItem('pet_phone');
+}
+
+function getCurrentPetId() {
+  return sessionStorage.getItem('pet_current_id') || null;
+}
+function setCurrentPetId(id) {
+  sessionStorage.setItem('pet_current_id', id);
+}
+
+// 获取当前账号的 pets 数组
+function getAccountPets() {
+  const phone = getSessionPhone();
+  if (!phone) return [];
+  const accounts = loadAccounts();
+  if (!accounts[phone]) return [];
+  return accounts[phone].pets || [];
+}
+
+function saveAccountPets(pets) {
+  const phone = getSessionPhone();
+  if (!phone) return;
+  const accounts = loadAccounts();
+  if (!accounts[phone]) return;
+  accounts[phone].pets = pets;
+  saveAccounts(accounts);
+}
+
+// 获取当前宠物对象
+function getCurrentPet() {
+  const pets = getAccountPets();
+  const petId = getCurrentPetId();
+  return pets.find(p => p.id === petId) || null;
+}
+
+function saveCurrentPet(pet) {
+  const pets = getAccountPets();
+  const idx = pets.findIndex(p => p.id === pet.id);
+  if (idx >= 0) {
+    pets[idx] = pet;
+    saveAccountPets(pets);
+  }
+}
+
+// 创建宠物数据
+function createPet(type) {
+  const petData = PET_DATA[type];
+  return {
+    id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+    type: type,
+    name: petData.name,
+    level: 1,
+    exp: 0,
+    points: 50,
+    selectedFood: 'drumstick',
+    pointsLog: [{ time: new Date().toLocaleString('zh-CN', { hour12: false }), amount: 50, reason: '初始赠送' }],
+  };
+}
+
+function expToNext(level) { return level * 100; }
+
+// ====== Toast ======
+function showToast(msg) {
+  document.querySelectorAll('.toast').forEach(t => t.remove());
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.textContent = msg;
+  document.body.appendChild(el);
+  setTimeout(() => {
+    el.classList.add('out');
+    setTimeout(() => el.remove(), 300);
+  }, 1800);
+}
+
+// ====== 画面切换 ======
+const ALL_SCREENS = ['#splash-screen', '#login-screen', '#main-screen', '#adopt-screen', '#game-screen'];
+
+function showScreen(id) {
+  document.querySelectorAll(ALL_SCREENS.join(',')).forEach(s => s.classList.remove('active'));
+  const target = document.getElementById(id);
+  if (target) target.classList.add('active');
+  if (id === 'splash-screen') {
+    document.getElementById('splash-screen').style.display = 'flex';
+  } else {
+    document.getElementById('splash-screen').style.display = 'none';
+  }
+}
+
+// ====== 登录 ======
+function doLogin() {
+  const phone = document.getElementById('login-phone').value.trim();
+  const password = document.getElementById('login-password').value.trim();
+  const errorEl = document.getElementById('login-error');
+
+  // 验证手机号
+  if (!/^1\d{10}$/.test(phone)) {
+    errorEl.textContent = '请输入正确的11位手机号';
+    return;
+  }
+  // 验证密码
+  if (!password) {
+    errorEl.textContent = '请输入密码';
+    return;
+  }
+
+  const accounts = loadAccounts();
+  const defaultPwd = phone.slice(-4);
+
+  if (accounts[phone]) {
+    // 已有账号：验证密码
+    if (accounts[phone].password !== password) {
+      errorEl.textContent = '密码错误';
+      return;
+    }
+  } else {
+    // 新账号：检查默认密码
+    if (password !== defaultPwd) {
+      errorEl.textContent = '首次登录，密码为手机号后4位（' + defaultPwd + '）';
+      return;
+    }
+    // 自动注册
+    accounts[phone] = { password: defaultPwd, pets: [] };
+    saveAccounts(accounts);
+  }
+
+  errorEl.textContent = '';
+  setSessionPhone(phone);
+  showMainScreen();
+}
+
+// ====== 主界面渲染 ======
+function renderOverview() {
+  const phone = getSessionPhone();
+  if (!phone) {
+    showScreen('login-screen');
+    return;
+  }
+  document.getElementById('user-phone-display').textContent = phone;
+
+  const pets = getAccountPets();
+  const container = document.getElementById('overview-container');
+
+  if (pets.length === 0) {
+    container.innerHTML = '<div class="empty-hint" style="grid-column:1/-1;"><span class="empty-icon">🐣</span>还没有宠物，快去领养一只吧！</div>';
+    return;
+  }
+
+  container.innerHTML = pets.map(p => {
+    const petData = PET_DATA[p.type] || PET_DATA['cat'];
+    const needed = expToNext(p.level);
+    const expPct = Math.min(100, (p.exp / needed) * 100);
+    return `
+      <div class="overview-card" data-pet-id="${p.id}">
+        <span class="ov-emoji">${petData.emoji}</span>
+        <span class="ov-name">${p.name}</span>
+        <span class="ov-level">Lv.${p.level}</span>
+        <div class="progress-bar ov-bar"><div class="progress-fill exp-fill" style="width:${expPct}%"></div></div>
+        <span class="ov-points">🪙${p.points}</span>
+      </div>`;
+  }).join('');
+
+  container.querySelectorAll('.overview-card').forEach(card => {
+    card.addEventListener('click', () => {
+      setCurrentPetId(card.dataset.petId);
+      renderGame();
+      showScreen('game-screen');
+    });
+  });
+}
+
+function renderRewards() {
+  const phone = getSessionPhone();
+  if (!phone) return;
+
+  // 宠物选择器
+  const petSelect = document.getElementById('reward-pet-select');
+  const pets = getAccountPets();
+  petSelect.innerHTML = pets.map((p, i) => `<option value="${p.id}">${(PET_DATA[p.type]||PET_DATA.cat).emoji} ${p.name}</option>`).join('');
+  if (pets.length === 0) {
+    petSelect.innerHTML = '<option value="">没有宠物</option>';
+  }
+
+  // 日志筛选器
+  const logFilter = document.getElementById('log-filter-pet');
+  logFilter.innerHTML = '<option value="all">全部宠物</option>' +
+    pets.map(p => `<option value="${p.id}">${(PET_DATA[p.type]||PET_DATA.cat).emoji} ${p.name}</option>`).join('');
+
+  renderLogList('all');
+}
+
+function renderLogList(filterPetId) {
+  const allLogs = getAllPointsLogs();
+  const filtered = filterPetId === 'all' ? allLogs : allLogs.filter(l => l.petId === filterPetId);
+  const list = document.getElementById('log-list');
+
+  if (filtered.length === 0) {
+    list.innerHTML = '<div class="empty-hint" style="padding:16px 0; font-size:13px;">暂无积分记录</div>';
+    return;
+  }
+
+  list.innerHTML = filtered.map(l => `
+    <div class="log-item">
+      <span class="log-emoji">${l.petEmoji}</span>
+      <div class="log-info">
+        <div class="log-reason">${l.petName} - ${l.reason}</div>
+        <div class="log-time">${l.time}</div>
+      </div>
+      <span class="log-amount ${l.amount >= 0 ? 'positive' : 'negative'}">${l.amount >= 0 ? '+' : ''}${l.amount}</span>
+    </div>`).join('');
+}
+
+function showMainScreen() {
+  renderOverview();
+  renderRewards();
+  // 默认显示概览标签
+  document.getElementById('tab-overview').classList.add('active');
+  document.getElementById('tab-rewards').classList.remove('active');
+  document.getElementById('tab-lottery').classList.remove('active');
+  document.getElementById('overview-tab').style.display = 'block';
+  document.getElementById('rewards-tab').style.display = 'none';
+  document.getElementById('lottery-tab').style.display = 'none';
+  document.getElementById('ranking-tab').style.display = 'none';
+  showScreen('main-screen');
+}
+
+// ====== 领养 ======
+let adoptPendingType = null;
+
+function renderAdoptGrid() {
+  const grid = document.getElementById('pet-adopt-grid');
+  if (!grid) return;
+  grid.innerHTML = Object.entries(PET_DATA).map(([key, pet]) => `
+    <div class="pet-option" data-pet="${key}">
+      <span class="pet-emoji">${pet.emoji}</span>
+      <span class="pet-name">${pet.name}</span>
+      <span class="pet-desc">${pet.desc}</span>
+    </div>`).join('');
+
+  grid.querySelectorAll('.pet-option').forEach(opt => {
+    opt.addEventListener('click', () => {
+      adoptPendingType = opt.dataset.pet;
+      const petData = PET_DATA[adoptPendingType];
+      document.getElementById('adopt-name-title').textContent = `${petData.emoji} 给你的宠物起个名字`;
+      document.getElementById('adopt-name-input').value = petData.name;
+      document.getElementById('adopt-name-modal').classList.add('active');
+    });
+  });
+}
+
+function confirmAdopt() {
+  if (!adoptPendingType) return;
+  const phone = getSessionPhone();
+  if (!phone) return;
+
+  const name = document.getElementById('adopt-name-input').value.trim() || PET_DATA[adoptPendingType].name;
+  const newPet = createPet(adoptPendingType);
+  newPet.name = name;
+
+  const pets = getAccountPets();
+  pets.push(newPet);
+  saveAccountPets(pets);
+
+  setCurrentPetId(newPet.id);
+  renderGame();
+  showScreen('game-screen');
+  showToast(`成功领养 ${name}！`);
+  document.getElementById('adopt-name-modal').classList.remove('active');
+  adoptPendingType = null;
+}
+
+// ====== 游戏渲染 ======
+function renderGame() {
+  const pet = getCurrentPet();
+  if (!pet) { showMainScreen(); return; }
+
+  const petData = PET_DATA[pet.type] || PET_DATA['cat'];
+
+  document.getElementById('pet-avatar').textContent = petData.emoji;
+  document.getElementById('pet-name-text').textContent = pet.name;
+  document.getElementById('pet-level-text').textContent = `Lv.${pet.level}`;
+
+  const needed = expToNext(pet.level);
+  document.getElementById('exp-bar').style.width = Math.min(100, (pet.exp / needed) * 100) + '%';
+  document.getElementById('exp-text').textContent = `${pet.exp}/${needed}`;
+
+  document.getElementById('points-text').textContent = pet.points;
+
+  renderFoodOptions(pet);
+}
+
+function renderFoodOptions(pet) {
+  const container = document.getElementById('feed-options');
+  container.innerHTML = FOODS.map(f => {
+    const sel = pet.selectedFood === f.id ? ' selected' : '';
+    const canAfford = pet.points >= f.cost;
+    const cls = sel + (canAfford ? '' : ' disabled');
+    return `
+      <div class="food-btn${sel}" data-food="${f.id}" style="${canAfford ? '' : 'opacity:0.4;'}">
+        <span class="food-emoji">${f.emoji}</span>
+        <span class="food-name">${f.name}</span>
+        <span class="food-cost">🪙${f.cost}</span>
+      </div>`;
+  }).join('');
+
+  container.querySelectorAll('.food-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const pet = getCurrentPet();
+      if (!pet) return;
+      const food = FOODS.find(f => f.id === btn.dataset.food);
+      if (food && pet.points < food.cost) {
+        showToast('积分不足，请去奖励页面领取');
+        return;
+      }
+      pet.selectedFood = btn.dataset.food;
+      saveCurrentPet(pet);
+      renderFoodOptions(pet);
+    });
+  });
+}
+
+// ====== 喂食 ======
+function feed() {
+  const pet = getCurrentPet();
+  if (!pet) return;
+
+  const food = FOODS.find(f => f.id === pet.selectedFood);
+  if (!food) return;
+
+  if (pet.points < food.cost) {
+    showToast('积分不足，请去奖励页面领取积分');
+    return;
+  }
+
+  pet.points -= food.cost;
+  addPointsLog(pet, -food.cost, `喂食${food.name}消耗`);
+
+  pet.exp += food.exp;
+
+  const needed = expToNext(pet.level);
+  if (pet.exp >= needed) {
+    pet.exp -= needed;
+    pet.level++;
+    showToast(`🎉 升级啦！达到 Lv.${pet.level}！`);
+  }
+
+  saveCurrentPet(pet);
+  renderGame();
+  showToast(`喂食 ${food.name} +${food.exp}EXP`);
+}
+
+
+// ====== Splash ======
+function doSplash() {
+  const splash = document.getElementById('splash-screen');
+  const hello = splash.querySelector('.hello-text');
+  hello.style.animation = 'splashIn 1s ease-out forwards';
+
+  setTimeout(() => {
+    hello.style.animation = 'splashOut 0.6s ease-out forwards';
+  }, 2000);
+
+  setTimeout(() => {
+    splash.style.display = 'none';
+    if (getSessionPhone()) {
+      showMainScreen();
+    } else {
+      showScreen('login-screen');
+    }
+  }, 2600);
+}
+
+// ====== 事件绑定 ======
+function bindEvents() {
+  // 登录
+  document.getElementById('login-btn').addEventListener('click', doLogin);
+  ['login-phone', 'login-password'].forEach(id => {
+    document.getElementById(id).addEventListener('keydown', e => {
+      if (e.key === 'Enter') doLogin();
+    });
+  });
+
+  // 退出
+  document.getElementById('logout-btn').addEventListener('click', () => {
+    clearSession();
+    setCurrentPetId(null);
+    showScreen('login-screen');
+  });
+
+  // 标签页切换
+  function switchTab(activeTab) {
+    ['tab-overview', 'tab-rewards', 'tab-lottery', 'tab-ranking'].forEach(id => {
+      document.getElementById(id).classList.remove('active');
+    });
+    document.getElementById(activeTab).classList.add('active');
+    document.getElementById('overview-tab').style.display = activeTab === 'tab-overview' ? 'block' : 'none';
+    document.getElementById('rewards-tab').style.display = activeTab === 'tab-rewards' ? 'block' : 'none';
+    document.getElementById('lottery-tab').style.display = activeTab === 'tab-lottery' ? 'block' : 'none';
+    document.getElementById('ranking-tab').style.display = activeTab === 'tab-ranking' ? 'block' : 'none';
+    if (activeTab === 'tab-rewards') renderRewards();
+    if (activeTab === 'tab-lottery') renderLottery();
+    if (activeTab === 'tab-ranking') renderRanking();
+  }
+  document.getElementById('tab-overview').addEventListener('click', () => switchTab('tab-overview'));
+  document.getElementById('tab-rewards').addEventListener('click', () => switchTab('tab-rewards'));
+  document.getElementById('tab-lottery').addEventListener('click', () => switchTab('tab-lottery'));
+  document.getElementById('tab-ranking').addEventListener('click', () => switchTab('tab-ranking'));
+
+  // 抽奖按钮
+  document.getElementById('spin-btn').addEventListener('click', spin);
+  document.getElementById('lottery-pet-select').addEventListener('change', updateLotteryButton);
+
+  // 奖励页 - 增加/扣除模式切换
+  let rewardMode = 'add';
+  function updateAmountLabels() {
+    const prefix = rewardMode === 'add' ? '+' : '-';
+    document.querySelectorAll('#amount-btns .amount-btn').forEach(btn => {
+      btn.textContent = prefix + btn.dataset.amount;
+    });
+  }
+  document.getElementById('reward-mode-add').addEventListener('click', () => {
+    rewardMode = 'add';
+    document.getElementById('reward-mode-add').className = 'btn btn-small btn-primary';
+    document.getElementById('reward-mode-deduct').className = 'btn btn-small btn-outline';
+    updateAmountLabels();
+  });
+  document.getElementById('reward-mode-deduct').addEventListener('click', () => {
+    rewardMode = 'deduct';
+    document.getElementById('reward-mode-deduct').className = 'btn btn-small btn-primary';
+    document.getElementById('reward-mode-add').className = 'btn btn-small btn-outline';
+    updateAmountLabels();
+  });
+  updateAmountLabels(); // 初始显示
+
+  // 奖励页 - 金额按钮选择
+  document.querySelectorAll('#amount-btns .amount-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#amount-btns .amount-btn').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+    });
+  });
+
+  // 奖励页 - 确认操作
+  document.getElementById('reward-submit').addEventListener('click', () => {
+    const petId = document.getElementById('reward-pet-select').value;
+    if (!petId) { showToast('请先选择宠物'); return; }
+    const pets = getAccountPets();
+    const pet = pets.find(p => p.id === petId);
+    if (!pet) return;
+
+    const selectedBtn = document.querySelector('#amount-btns .amount-btn.selected');
+    let amount = parseInt(selectedBtn ? selectedBtn.dataset.amount : 10);
+    let reason = document.getElementById('reward-reason').value.trim();
+
+    if (rewardMode === 'deduct') {
+      amount = -amount;
+      if (pet.points < Math.abs(amount)) { showToast('积分不足，无法扣除'); return; }
+      if (!reason) reason = '手动扣除';
+      else reason = '扣除: ' + reason;
+    } else {
+      if (!reason) reason = '手动添加';
+      else reason = '添加: ' + reason;
+    }
+
+    pet.points += amount;
+    addPointsLog(pet, amount, reason);
+    saveAccountPets(pets);
+    renderRewards();
+    document.getElementById('reward-reason').value = '';
+    showToast(`${amount >= 0 ? '增加' : '扣除'} ${Math.abs(amount)} 积分 (${pet.name})`);
+  });
+
+  // 奖励页 - 日志筛选
+  document.getElementById('log-filter-pet').addEventListener('change', e => {
+    renderLogList(e.target.value);
+  });
+
+  // 领养新宠物 - 动态渲染宠物网格
+  document.getElementById('to-adopt-btn').addEventListener('click', () => {
+    renderAdoptGrid();
+    showScreen('adopt-screen');
+  });
+
+  // 领养命名弹窗
+  document.getElementById('adopt-name-confirm').addEventListener('click', confirmAdopt);
+  document.getElementById('adopt-name-cancel').addEventListener('click', () => {
+    document.getElementById('adopt-name-modal').classList.remove('active');
+    adoptPendingType = null;
+  });
+  document.getElementById('adopt-name-modal').addEventListener('click', e => {
+    if (e.target === e.currentTarget) e.currentTarget.classList.remove('active');
+  });
+  document.getElementById('adopt-name-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') confirmAdopt();
+  });
+
+  // 领养页返回
+  document.getElementById('adopt-back-btn').addEventListener('click', () => showMainScreen());
+
+  // 游戏返回
+  document.getElementById('game-back-btn').addEventListener('click', () => {
+    setCurrentPetId(null);
+    showMainScreen();
+  });
+
+  // 喂食
+  document.getElementById('feed-btn').addEventListener('click', feed);
+
+  // 放生（游戏界面）
+  document.getElementById('game-delete-btn').addEventListener('click', () => {
+    const pet = getCurrentPet();
+    if (!pet) return;
+    if (confirm(`确定要放生 ${pet.name} 吗？此操作不可恢复。`)) {
+      const pets = getAccountPets().filter(p => p.id !== pet.id);
+      saveAccountPets(pets);
+      setCurrentPetId(null);
+      showMainScreen();
+      showToast(`${pet.name} 已放生`);
+    }
+  });
+
+  // 改名
+  document.getElementById('edit-name-btn').addEventListener('click', () => {
+    const pet = getCurrentPet();
+    if (!pet) return;
+    document.getElementById('rename-input').value = pet.name;
+    document.getElementById('rename-modal').classList.add('active');
+  });
+  document.getElementById('rename-cancel').addEventListener('click', () => {
+    document.getElementById('rename-modal').classList.remove('active');
+  });
+  document.getElementById('rename-confirm').addEventListener('click', () => {
+    const val = document.getElementById('rename-input').value.trim();
+    if (!val) return;
+    const pet = getCurrentPet();
+    if (!pet) return;
+    pet.name = val;
+    saveCurrentPet(pet);
+    renderGame();
+    showToast(`改名成功：${val}`);
+    document.getElementById('rename-modal').classList.remove('active');
+  });
+  document.getElementById('rename-modal').addEventListener('click', e => {
+    if (e.target === e.currentTarget) e.currentTarget.classList.remove('active');
+  });
+}
+
+// ====== 抽奖转盘 ======
+const LOTTERY_PRIZES = [
+  { value: 50, color: '#FF6B6B', label: '50积分' },
+  { value: 30, color: '#FFA94D', label: '30积分' },
+  { value: 20, color: '#69DB7C', label: '20积分' },
+  { value: 10, color: '#4DABF7', label: '10积分' },
+  { value: 5,  color: '#B197FC', label: '5积分' },
+  { value: 0,  color: '#ADB5BD', label: '0积分' },
+];
+// 概率权重: 50-5%, 30-10%, 20-20%, 10-35%, 5-20%, 0-10%
+const LOTTERY_WEIGHTS = [5, 10, 20, 35, 20, 10];
+
+const SEG_COUNT = LOTTERY_PRIZES.length;
+const SEG_ANGLE = (2 * Math.PI) / SEG_COUNT;
+
+function drawWheel(ctx, cx, cy, r, rotation) {
+  ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+
+  for (let i = 0; i < SEG_COUNT; i++) {
+    const startAngle = i * SEG_ANGLE + rotation;
+    const endAngle = startAngle + SEG_ANGLE;
+
+    // 扇形
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.arc(cx, cy, r, startAngle, endAngle);
+    ctx.closePath();
+    ctx.fillStyle = LOTTERY_PRIZES[i].color;
+    ctx.fill();
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 3;
+    ctx.stroke();
+
+    // 外圈装饰小点
+    const dotCount = 8;
+    for (let d = 0; d < dotCount; d++) {
+      const dotAngle = startAngle + (d / dotCount) * SEG_ANGLE;
+      const dx = cx + Math.cos(dotAngle) * (r - 6);
+      const dy = cy + Math.sin(dotAngle) * (r - 6);
+      ctx.beginPath();
+      ctx.arc(dx, dy, 3, 0, 2 * Math.PI);
+      ctx.fillStyle = 'rgba(255,255,255,0.5)';
+      ctx.fill();
+    }
+
+    // 文字
+    const midAngle = startAngle + SEG_ANGLE / 2;
+    const tx = cx + Math.cos(midAngle) * r * 0.6;
+    const ty = cy + Math.sin(midAngle) * r * 0.6;
+    ctx.save();
+    ctx.translate(tx, ty);
+    ctx.rotate(midAngle + Math.PI / 2);
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 18px "PingFang SC","Microsoft YaHei",sans-serif';
+    ctx.textAlign = 'center';
+    ctx.shadowColor = 'rgba(0,0,0,0.3)';
+    ctx.shadowBlur = 4;
+    ctx.fillText(LOTTERY_PRIZES[i].label, 0, 0);
+    ctx.shadowBlur = 0;
+    ctx.restore();
+  }
+
+  // 外圈
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, 2 * Math.PI);
+  ctx.strokeStyle = '#fff';
+  ctx.lineWidth = 6;
+  ctx.stroke();
+
+  // 中心圆
+  const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, 28);
+  grad.addColorStop(0, '#fff');
+  grad.addColorStop(1, '#eee');
+  ctx.beginPath();
+  ctx.arc(cx, cy, 28, 0, 2 * Math.PI);
+  ctx.fillStyle = grad;
+  ctx.fill();
+  ctx.strokeStyle = '#ddd';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  ctx.fillStyle = '#333';
+  ctx.font = 'bold 14px "PingFang SC","Microsoft YaHei",sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('GO', cx, cy);
+}
+
+function weightedRandom() {
+  const total = LOTTERY_WEIGHTS.reduce((a, b) => a + b, 0);
+  let r = Math.random() * total;
+  for (let i = 0; i < LOTTERY_WEIGHTS.length; i++) {
+    r -= LOTTERY_WEIGHTS[i];
+    if (r <= 0) return i;
+  }
+  return LOTTERY_WEIGHTS.length - 1;
+}
+
+function getTodayKey() {
+  return new Date().toLocaleDateString('zh-CN');
+}
+
+let isSpinning = false;
+let currentRotation = 0; // 当前累计旋转角度(rad)
+let animFrame = null;
+
+function renderLottery() {
+  const phone = getSessionPhone();
+  if (!phone) return;
+
+  const pets = getAccountPets();
+  const select = document.getElementById('lottery-pet-select');
+  const today = getTodayKey();
+
+  select.innerHTML = pets.map(p => {
+    const used = p.lastLotteryDate === today;
+    const status = used ? ' (今日已抽)' : '';
+    return `<option value="${p.id}">${(PET_DATA[p.type]||PET_DATA.cat).emoji} ${p.name} 🪙${p.points}${status}</option>`;
+  }).join('');
+
+  updateLotteryButton();
+
+  const canvas = document.getElementById('wheel-canvas');
+  canvas.style.transform = 'none';
+  const ctx = canvas.getContext('2d');
+  const cx = canvas.width / 2;
+  const cy = canvas.height / 2;
+  const r = cx - 4;
+  drawWheel(ctx, cx, cy, r, currentRotation);
+}
+
+function updateLotteryButton() {
+  const petId = document.getElementById('lottery-pet-select').value;
+  const pets = getAccountPets();
+  const pet = pets.find(p => p.id === petId);
+  const today = getTodayKey();
+  const used = pet?.lastLotteryDate === today;
+
+  const btn = document.getElementById('spin-btn');
+  const result = document.getElementById('lottery-result');
+
+  if (!pet) {
+    btn.disabled = true;
+    btn.textContent = '没有宠物';
+    return;
+  }
+  if (used) {
+    btn.disabled = true;
+    btn.textContent = `${pet.name} 今日已抽奖`;
+    result.textContent = '换只宠物或明天再来~';
+  } else {
+    btn.disabled = false;
+    btn.textContent = `🎯 抽奖 (10积分)`;
+    result.textContent = '';
+  }
+}
+
+function spin() {
+  if (isSpinning) return;
+  const phone = getSessionPhone();
+  if (!phone) return;
+
+  const petId = document.getElementById('lottery-pet-select').value;
+  if (!petId) { showToast('请先选择宠物'); return; }
+  const pets = getAccountPets();
+  const pet = pets.find(p => p.id === petId);
+  if (!pet) return;
+
+  const today = getTodayKey();
+  if (pet.lastLotteryDate === today) {
+    showToast(`${pet.name} 今日已抽奖，换只宠物或明天再来`);
+    return;
+  }
+  if (pet.points < 10) { showToast('积分不足，需要10积分'); return; }
+
+  // 扣积分
+  pet.points -= 10;
+  addPointsLog(pet, -10, '抽奖消耗');
+
+  // 抽奖结果
+  const winIdx = weightedRandom();
+  const prize = LOTTERY_PRIZES[winIdx];
+  pet.points += prize.value;
+  if (prize.value > 0) {
+    addPointsLog(pet, prize.value, `抽奖获得${prize.value}积分`);
+  } else {
+    addPointsLog(pet, 0, '抽奖未中奖');
+  }
+
+  // 记录该宠物今日已抽
+  pet.lastLotteryDate = today;
+  saveAccountPets(pets);
+
+  // ====== requestAnimationFrame 动画 ======
+  isSpinning = true;
+  const canvas = document.getElementById('wheel-canvas');
+  canvas.style.transform = 'none';
+  const ctx = canvas.getContext('2d');
+  const cx = canvas.width / 2;
+  const cy = canvas.height / 2;
+  const r = cx - 4;
+
+  // 指针在顶部(12点钟方向 = -PI/2)，目标扇区中心角度
+  const pointerAngle = -Math.PI / 2; // 指针在顶部
+  const targetSegCenter = winIdx * SEG_ANGLE + SEG_ANGLE / 2;
+  // 需要让指针指向这个扇区中心：rotation + pointerAngle ≡ targetSegCenter (mod 2PI)
+  // 即：最终 rotation = targetSegCenter - pointerAngle + N*2PI
+  const baseTarget = targetSegCenter - pointerAngle;
+
+  // 至少转5圈 + 随机偏移让每次看起来不同
+  const extraSpins = (5 + Math.random() * 3) * 2 * Math.PI;
+  const targetRotation = baseTarget + extraSpins;
+
+  const startRotation = currentRotation;
+  const totalAngle = targetRotation - startRotation;
+  const duration = 4000; // ms
+  const startTime = performance.now();
+
+  function animate(now) {
+    const elapsed = now - startTime;
+    const progress = Math.min(elapsed / duration, 1);
+
+    // ease-out: 减速效果（开始快，逐渐慢）
+    const eased = 1 - Math.pow(1 - progress, 4);
+
+    currentRotation = startRotation + totalAngle * eased;
+    drawWheel(ctx, cx, cy, r, currentRotation);
+
+    if (progress < 1) {
+      animFrame = requestAnimationFrame(animate);
+    } else {
+      // 动画结束
+      currentRotation = targetRotation % (2 * Math.PI);
+      drawWheel(ctx, cx, cy, r, currentRotation);
+      isSpinning = false;
+      animFrame = null;
+
+      const result = document.getElementById('lottery-result');
+      if (prize.value > 0) {
+        result.innerHTML = `🎉 恭喜获得 <b style="color:#e07b5a;">${prize.value}</b> 积分！`;
+        showToast(`抽奖获得 ${prize.value} 积分！`);
+      } else {
+        result.innerHTML = '😅 很遗憾，本次未中奖';
+        showToast('抽奖未中奖，下次好运！');
+      }
+      renderLottery();
+    }
+  }
+
+  animFrame = requestAnimationFrame(animate);
+}
+
+// ====== 排行 ======
+function getAllPetsRanked() {
+  const accounts = loadAccounts();
+  const allPets = [];
+  Object.entries(accounts).forEach(([phone, acct]) => {
+    (acct.pets || []).forEach(p => {
+      allPets.push({
+        ...p,
+        phone: phone,
+        phoneMask: phone.slice(0, 3) + '****' + phone.slice(-4),
+        petEmoji: (PET_DATA[p.type] || PET_DATA.cat).emoji,
+      });
+    });
+  });
+  return allPets;
+}
+
+function renderRanking() {
+  const allPets = getAllPetsRanked();
+
+  // 等级排行
+  const levelRanked = [...allPets].sort((a, b) => b.level - a.level || b.exp - a.exp);
+  document.getElementById('level-rank-list').innerHTML = levelRanked.slice(0, 20).map((p, i) => {
+    let badgeClass = 'normal';
+    if (i === 0) badgeClass = 'gold';
+    else if (i === 1) badgeClass = 'silver';
+    else if (i === 2) badgeClass = 'bronze';
+    return `
+      <div class="rank-item">
+        <span class="rank-badge ${badgeClass}">${i + 1}</span>
+        <span class="rank-emoji">${p.petEmoji}</span>
+        <div class="rank-info">
+          <div class="rank-name">${p.name}</div>
+          <div class="rank-detail">Lv.${p.level} · ${p.exp}/${expToNext(p.level)}EXP · ${p.phoneMask}</div>
+        </div>
+        <span class="rank-value">Lv.${p.level}</span>
+      </div>`;
+  }).join('') || '<div class="empty-hint" style="padding:16px 0; font-size:13px;">暂无数据</div>';
+
+  // 积分排行
+  const pointsRanked = [...allPets].sort((a, b) => b.points - a.points);
+  document.getElementById('points-rank-list').innerHTML = pointsRanked.slice(0, 20).map((p, i) => {
+    let badgeClass = 'normal';
+    if (i === 0) badgeClass = 'gold';
+    else if (i === 1) badgeClass = 'silver';
+    else if (i === 2) badgeClass = 'bronze';
+    return `
+      <div class="rank-item">
+        <span class="rank-badge ${badgeClass}">${i + 1}</span>
+        <span class="rank-emoji">${p.petEmoji}</span>
+        <div class="rank-info">
+          <div class="rank-name">${p.name}</div>
+          <div class="rank-detail">Lv.${p.level} · ${p.phoneMask}</div>
+        </div>
+        <span class="rank-value">🪙${p.points}</span>
+      </div>`;
+  }).join('') || '<div class="empty-hint" style="padding:16px 0; font-size:13px;">暂无数据</div>';
+
+  // 今日积分变动排行
+  const today = new Date().toLocaleDateString('zh-CN');
+  const todayRanked = [...allPets].map(p => {
+    const todayChange = (p.pointsLog || [])
+      .filter(l => l.time.startsWith(today))
+      .reduce((sum, l) => sum + l.amount, 0);
+    return { ...p, todayChange };
+  }).sort((a, b) => b.todayChange - a.todayChange);
+
+  document.getElementById('today-rank-list').innerHTML = todayRanked.slice(0, 20).map((p, i) => {
+    let badgeClass = 'normal';
+    if (i === 0) badgeClass = 'gold';
+    else if (i === 1) badgeClass = 'silver';
+    else if (i === 2) badgeClass = 'bronze';
+    const sign = p.todayChange >= 0 ? '+' : '';
+    const cls = p.todayChange >= 0 ? 'positive' : 'negative';
+    return `
+      <div class="rank-item">
+        <span class="rank-badge ${badgeClass}">${i + 1}</span>
+        <span class="rank-emoji">${p.petEmoji}</span>
+        <div class="rank-info">
+          <div class="rank-name">${p.name}</div>
+          <div class="rank-detail">Lv.${p.level} · ${p.phoneMask}</div>
+        </div>
+        <span class="rank-value" style="color:${p.todayChange >= 0 ? '#e74c3c' : '#4caf50'}">${sign}${p.todayChange}</span>
+      </div>`;
+  }).join('') || '<div class="empty-hint" style="padding:16px 0; font-size:13px;">今天暂无变动</div>';
+}
+
+// ====== 初始化 ======
+function init() {
+  bindEvents();
+  doSplash();
+}
+
+init();
+</script>
 </body>
 </html>
