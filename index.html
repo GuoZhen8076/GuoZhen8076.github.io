@@ -586,7 +586,7 @@ body {
         <span class="stat-val" id="exp-text">0/100</span>
       </div>
     </div>
-    <div class="points-display"><span>🪙</span> <span id="points-text">0</span></div>
+    <div class="points-display"><span>🪙</span> <span id="points-text">0</span><span class="edit-icon" id="edit-points-btn" title="调整积分" style="font-size:14px; cursor:pointer; margin-left:4px; opacity:0.5;">✎</span></div>
     <div class="feed-section" id="feed-options"></div>
     <div class="feed-action">
       <button class="btn btn-primary" id="feed-btn" style="font-size:16px; padding:12px 36px;">🍽️ 喂食</button>
@@ -640,6 +640,19 @@ body {
     <div style="display:flex; gap:8px; margin-top:16px; justify-content:center;">
       <button class="btn btn-outline" id="rename-cancel">取消</button>
       <button class="btn btn-primary" id="rename-confirm">确认</button>
+    </div>
+  </div>
+</div>
+
+<!-- 积分编辑弹窗 -->
+<div class="modal-overlay" id="points-edit-modal">
+  <div class="modal">
+    <h3>⚡ 调整积分</h3>
+    <p style="text-align:center; font-size:13px; color:var(--sub); margin-bottom:10px;" id="points-edit-current"></p>
+    <input type="number" class="input-field" id="pem-value" placeholder="输入新的积分数值" style="margin-bottom:12px;">
+    <div style="display:flex; gap:8px; justify-content:center;">
+      <button class="btn btn-outline" id="pem-cancel">取消</button>
+      <button class="btn btn-primary" id="pem-confirm">确认</button>
     </div>
   </div>
 </div>
@@ -1352,6 +1365,35 @@ function bindEvents() {
     document.getElementById('rename-modal').classList.remove('active');
   });
   document.getElementById('rename-modal').addEventListener('click', e => {
+    if (e.target === e.currentTarget) e.currentTarget.classList.remove('active');
+  });
+
+  // 积分编辑
+  document.getElementById('edit-points-btn').addEventListener('click', () => {
+    const pet = getCurrentPet();
+    if (!pet) return;
+    document.getElementById('points-edit-current').textContent = `当前积分：🪙${pet.points}`;
+    document.getElementById('pem-value').value = pet.points;
+    document.getElementById('points-edit-modal').classList.add('active');
+  });
+  document.getElementById('pem-cancel').addEventListener('click', () => {
+    document.getElementById('points-edit-modal').classList.remove('active');
+  });
+  document.getElementById('pem-confirm').addEventListener('click', () => {
+    const pet = getCurrentPet();
+    if (!pet) return;
+    const newVal = parseInt(document.getElementById('pem-value').value);
+    if (isNaN(newVal) || newVal < 0) { showToast('请输入有效的积分数值'); return; }
+
+    const diff = newVal - pet.points;
+    pet.points = newVal;
+    addPointsLog(pet, diff, '调整积分');
+    saveCurrentPet(pet);
+    renderGame();
+    document.getElementById('points-edit-modal').classList.remove('active');
+    showToast(`积分调整为 ${newVal} (${diff >= 0 ? '+' : ''}${diff})`);
+  });
+  document.getElementById('points-edit-modal').addEventListener('click', e => {
     if (e.target === e.currentTarget) e.currentTarget.classList.remove('active');
   });
 }
