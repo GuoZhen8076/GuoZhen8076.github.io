@@ -597,6 +597,29 @@ body {
   </div>
 </div>
 
+<!-- 概览快速加积分弹窗 -->
+<div class="modal-overlay" id="quick-points-modal">
+  <div class="modal">
+    <h3 id="quick-points-title">⚡ 快速调整积分</h3>
+    <div style="display:flex; gap:8px; margin-bottom:10px;">
+      <button class="btn btn-small btn-primary" id="quick-mode-add" style="flex:1;">增加</button>
+      <button class="btn btn-small btn-outline" id="quick-mode-deduct" style="flex:1;">扣除</button>
+    </div>
+    <div class="amount-btns" id="quick-amount-btns" style="justify-content:center; margin-bottom:10px;">
+      <button class="amount-btn selected" data-amount="10">10</button>
+      <button class="amount-btn" data-amount="20">20</button>
+      <button class="amount-btn" data-amount="30">30</button>
+      <button class="amount-btn" data-amount="40">40</button>
+      <button class="amount-btn" data-amount="50">50</button>
+    </div>
+    <input type="text" class="input-field" id="quick-reason" placeholder="理由（选填）" style="margin-bottom:12px;">
+    <div style="display:flex; gap:8px; justify-content:center;">
+      <button class="btn btn-outline" id="quick-cancel">取消</button>
+      <button class="btn btn-primary" id="quick-confirm">确认</button>
+    </div>
+  </div>
+</div>
+
 <!-- 领养命名弹窗 -->
 <div class="modal-overlay" id="adopt-name-modal">
   <div class="modal">
@@ -755,9 +778,9 @@ function createPet(type) {
     name: petData.name,
     level: 1,
     exp: 0,
-    points: 50,
+    points: 0,
     selectedFood: 'drumstick',
-    pointsLog: [{ time: new Date().toLocaleString('zh-CN', { hour12: false }), amount: 50, reason: '初始赠送' }],
+    pointsLog: [],
   };
 }
 
@@ -860,14 +883,22 @@ function renderOverview() {
         <span class="ov-level">Lv.${p.level}</span>
         <div class="progress-bar ov-bar"><div class="progress-fill exp-fill" style="width:${expPct}%"></div></div>
         <span class="ov-points">🪙${p.points}</span>
+        <button class="btn btn-small btn-outline quick-add-btn" data-pet-id="${p.id}" style="margin-top:4px; font-size:11px; padding:3px 10px;">⚡积分</button>
       </div>`;
   }).join('');
 
   container.querySelectorAll('.overview-card').forEach(card => {
-    card.addEventListener('click', () => {
+    card.addEventListener('click', e => {
+      if (e.target.classList.contains('quick-add-btn')) return;
       setCurrentPetId(card.dataset.petId);
       renderGame();
       showScreen('game-screen');
+    });
+  });
+  container.querySelectorAll('.quick-add-btn').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      openQuickPoints(btn.dataset.petId);
     });
   });
 }
@@ -1100,6 +1131,7 @@ function bindEvents() {
     document.getElementById('rewards-tab').style.display = activeTab === 'tab-rewards' ? 'block' : 'none';
     document.getElementById('lottery-tab').style.display = activeTab === 'tab-lottery' ? 'block' : 'none';
     document.getElementById('ranking-tab').style.display = activeTab === 'tab-ranking' ? 'block' : 'none';
+    if (activeTab === 'tab-overview') renderOverview();
     if (activeTab === 'tab-rewards') renderRewards();
     if (activeTab === 'tab-lottery') renderLottery();
     if (activeTab === 'tab-ranking') renderRanking();
@@ -1112,6 +1144,82 @@ function bindEvents() {
   // 抽奖按钮
   document.getElementById('spin-btn').addEventListener('click', spin);
   document.getElementById('lottery-pet-select').addEventListener('change', updateLotteryButton);
+
+  // 概览快速积分
+  let quickMode = 'add';
+  let quickPetId = null;
+  function openQuickPoints(petId) {
+    quickPetId = petId;
+    quickMode = 'add';
+    document.getElementById('quick-mode-add').className = 'btn btn-small btn-primary';
+    document.getElementById('quick-mode-deduct').className = 'btn btn-small btn-outline';
+    updateQuickLabels();
+    document.getElementById('quick-reason').value = '';
+    document.getElementById('quick-points-modal').classList.add('active');
+    document.querySelector('#quick-amount-btns .amount-btn').classList.add('selected');
+    document.querySelectorAll('#quick-amount-btns .amount-btn').forEach((b, i) => {
+      if (i > 0) b.classList.remove('selected');
+    });
+  }
+  function updateQuickLabels() {
+    const prefix = quickMode === 'add' ? '+' : '-';
+    document.querySelectorAll('#quick-amount-btns .amount-btn').forEach(btn => {
+      btn.textContent = prefix + btn.dataset.amount;
+    });
+  }
+  document.getElementById('quick-mode-add').addEventListener('click', () => {
+    quickMode = 'add';
+    document.getElementById('quick-mode-add').className = 'btn btn-small btn-primary';
+    document.getElementById('quick-mode-deduct').className = 'btn btn-small btn-outline';
+    updateQuickLabels();
+  });
+  document.getElementById('quick-mode-deduct').addEventListener('click', () => {
+    quickMode = 'deduct';
+    document.getElementById('quick-mode-deduct').className = 'btn btn-small btn-primary';
+    document.getElementById('quick-mode-add').className = 'btn btn-small btn-outline';
+    updateQuickLabels();
+  });
+  document.querySelectorAll('#quick-amount-btns .amount-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#quick-amount-btns .amount-btn').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+    });
+  });
+  document.getElementById('quick-cancel').addEventListener('click', () => {
+    document.getElementById('quick-points-modal').classList.remove('active');
+    quickPetId = null;
+  });
+  document.getElementById('quick-confirm').addEventListener('click', () => {
+    if (!quickPetId) return;
+    const pets = getAccountPets();
+    const pet = pets.find(p => p.id === quickPetId);
+    if (!pet) return;
+
+    const selectedBtn = document.querySelector('#quick-amount-btns .amount-btn.selected');
+    let amount = parseInt(selectedBtn ? selectedBtn.dataset.amount : 10);
+    let reason = document.getElementById('quick-reason').value.trim();
+
+    if (quickMode === 'deduct') {
+      amount = -amount;
+      if (pet.points < Math.abs(amount)) { showToast('积分不足'); return; }
+      if (!reason) reason = '手动扣除';
+      else reason = '扣除: ' + reason;
+    } else {
+      if (!reason) reason = '手动添加';
+      else reason = '添加: ' + reason;
+    }
+
+    pet.points += amount;
+    addPointsLog(pet, amount, reason);
+    saveAccountPets(pets);
+    renderOverview();
+    document.getElementById('quick-points-modal').classList.remove('active');
+    showToast(`${amount >= 0 ? '增加' : '扣除'} ${Math.abs(amount)} 积分 (${pet.name})`);
+    quickPetId = null;
+  });
+  document.getElementById('quick-points-modal').addEventListener('click', e => {
+    if (e.target === e.currentTarget) e.currentTarget.classList.remove('active');
+  });
 
   // 奖励页 - 增加/扣除模式切换
   let rewardMode = 'add';
